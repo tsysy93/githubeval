@@ -5,22 +5,10 @@ pipeline {
         IMAGE_NAME = 'mon-nginx'
         CONTAINER_NAME = 'myapp'
         PORT = '8081'
-        IMAGE_ID = sh(script: 'docker images -q ${IMAGE_NAME}', returnStdout: true).trim()
     }
 
     stages {
-        stage('Clean Docker') {
-            steps {
-                script {
-                    // Arrêt, suppression des conteneurs et des images Docker existants
-                    sh '''
-                    docker stop $(docker ps -aq) || true
-                    docker rm $(docker ps -aq) || true
-                    docker rmi $(docker images -q) || true
-                    '''
-                }
-            }
-        }
+        
 
         stage('Install Docker') {
             steps {
@@ -57,11 +45,31 @@ pipeline {
             }
         }
 
+        stage('Stop and Remove Container') {
+            steps {
+                // Arrêter et supprimer le conteneur avant le prochain stage
+                sh '''
+                docker stop ${CONTAINER_NAME} || true
+                docker rm ${CONTAINER_NAME} || true
+                '''
+            }
+        }
+
         stage('Copy site') {
             steps {
                 // Copie de index.html dans le conteneur Nginx
                 sh '''
                     docker cp index.html ${CONTAINER_NAME}:/usr/share/nginx/html/index.html
+                '''
+            }
+        }
+
+        stage('Stop and Remove Container Again') {
+            steps {
+                // Arrêter et supprimer le conteneur après la copie
+                sh '''
+                docker stop ${CONTAINER_NAME} || true
+                docker rm ${CONTAINER_NAME} || true
                 '''
             }
         }
