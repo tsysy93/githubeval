@@ -40,7 +40,9 @@ pipeline {
 
         stage('Copy site') {
             steps {
-                sh 'docker cp monsite myapp:/usr/share/nginx/html'
+                sh '''
+                    docker cp index.html myapp:/usr/share/nginx/html/index.html
+                '''
             }
         }
     }
