@@ -1,51 +1,84 @@
 pipeline {
     agent any
 
+    environment {
+        IMAGE_NAME = 'mon-nginx'
+        CONTAINER_NAME = 'myapp'
+        PORT = '8081'
+        IMAGE_ID = sh(script: 'docker images -q ${IMAGE_NAME}', returnStdout: true).trim()
+    }
+
     stages {
-
-       
-
         stage('Clean Docker') {
             steps {
-                sh '''
-                docker stop $(docker ps -aq) || true
-                docker rm $(docker ps -aq) || true
-                docker rmi $(docker images -q) || true
-                '''
+                script {
+                    // Arrêt, suppression des conteneurs et des images Docker existants
+                    sh '''
+                    docker stop $(docker ps -aq) || true
+                    docker rm $(docker ps -aq) || true
+                    docker rmi $(docker images -q) || true
+                    '''
+                }
             }
         }
 
         stage('Install Docker') {
             steps {
-                sh 'sudo apt install docker.io -y'
-                sh 'sudo systemctl start docker'
+                // Vérification et installation de Docker si nécessaire
+                sh 'sudo apt update && sudo apt install -y docker.io'
+                sh 'sudo systemctl enable --now docker'
             }
         }
 
         stage('Clone') {
             steps {
+                // Clonage du repository
                 git branch: 'main', url: 'https://github.com/tsysy93/githubeval.git'
             }
         }
 
         stage('Build') {
             steps {
-                sh 'docker build -t mon-nginx .'
+                // Construction de l'image Docker
+                sh 'docker build -t ${IMAGE_NAME} .'
             }
         }
 
         stage('Run') {
             steps {
-                sh 'docker run -d --name myapp -p 8081:80 mon-nginx'
+                // Exécution du conteneur avec le port exposé
+                sh '''
+                if [ ! "$(docker ps -q -f name=${CONTAINER_NAME})" ]; then
+                    docker run -d --name ${CONTAINER_NAME} -p ${PORT}:80 ${IMAGE_NAME}
+                else
+                    echo "Container ${CONTAINER_NAME} is already running."
+                fi
+                '''
             }
         }
 
         stage('Copy site') {
             steps {
+                // Copie de index.html dans le conteneur Nginx
                 sh '''
-                    docker cp index.html myapp:/usr/share/nginx/html/index.html
+                    docker cp index.html ${CONTAINER_NAME}:/usr/share/nginx/html/index.html
                 '''
             }
+        }
+    }
+
+    post {
+        always {
+            // Nettoyage après exécution du pipeline (optionnel)
+            echo 'Pipeline terminé.'
+        }
+        success {
+            // Actions à prendre si le pipeline réussit
+            echo 'Pipeline exécuté avec succès.'
+        }
+        failure {
+            // Actions à prendre en cas d’échec du pipeline
+            echo 'Échec du pipeline.'
         }
     }
 }
