@@ -1,0 +1,68 @@
+pipeline {
+    agent any
+
+    stages {
+
+        stage('deps') {
+            steps {
+                sh '''
+                sudo apt-get install -y ca-certificates curl gnupg lsb-release
+                '''
+            }
+        }
+
+        stage('gpg') {
+            steps {
+                sh '''
+                sudo mkdir -p /etc/apt/keyrings
+                curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
+                sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+                '''
+            }
+        }
+
+        stage('repo') {
+            steps {
+                sh '''
+                echo "deb [arch=$(dpkg --print-architecture) \
+                signed-by=/etc/apt/keyrings/docker.gpg] \
+                https://download.docker.com/linux/ubuntu \
+                $(lsb_release -cs) stable" | \
+                sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+                '''
+            }
+        }
+
+        stage('install') {
+            steps {
+                sh '''
+                sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+                '''
+            }
+        }
+
+        stage('start') {
+            steps {
+                sh '''
+                sudo systemctl start docker
+                sudo systemctl enable docker
+                '''
+            }
+        }
+
+        stage('group') {
+            steps {
+                sh 'sudo usermod -aG docker jenkins || true'
+            }
+        }
+
+        stage('test') {
+            steps {
+                sh '''
+                docker --version
+                sudo docker run hello-world
+                '''
+            }
+        }
+    }
+}
