@@ -10,48 +10,54 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                echo 'Récupération du code...'
                 checkout scm
+            }
+        }
+
+        stage('Verify workspace') {
+            steps {
+                sh 'ls -la'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    echo 'Construction de l’image Docker...'
-                    sh """
-                    docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
-                    """
-                }
+                sh """
+                docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                """
             }
         }
 
-        stage('Test Image') {
+        stage('Test Docker Image') {
             steps {
-                script {
-                    echo 'Test de l’image Docker...'
-                    sh """
-                    docker run --rm ${IMAGE_NAME}:${IMAGE_TAG} nginx -v
-                    """
-                }
+                sh """
+                docker run --rm ${IMAGE_NAME}:${IMAGE_TAG} nginx -v
+                """
             }
         }
 
-        stage('Deploy (optionnel)') {
+        stage('Run container test') {
             steps {
-                echo 'Déploiement (à adapter selon besoin)...'
-                // Exemple :
-                // sh "docker run -d -p 80:80 ${IMAGE_NAME}:${IMAGE_TAG}"
+                sh """
+                docker run -d --name test-nginx -p 8080:80 ${IMAGE_NAME}:${IMAGE_TAG}
+                sleep 5
+                curl -I http://localhost:8080 || true
+                docker stop test-nginx
+                docker rm test-nginx
+                """
             }
         }
     }
 
     post {
         success {
-            echo 'Pipeline exécuté avec succès !'
+            echo 'Pipeline terminé avec succès'
         }
         failure {
-            echo 'Erreur dans le pipeline.'
+            echo 'Pipeline échoué'
+        }
+        always {
+            sh 'docker system prune -f || true'
         }
     }
 }
