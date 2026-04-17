@@ -3,6 +3,19 @@ pipeline {
 
     stages {
 
+        stage('Check Network') {
+            steps {
+                sh '''
+                set -e
+                echo "DNS test:"
+                getent hosts download.docker.com || true
+
+                echo "Curl test:"
+                curl -I https://download.docker.com || true
+                '''
+            }
+        }
+
         stage('Install Docker') {
             steps {
                 sh '''
@@ -13,7 +26,12 @@ pipeline {
 
                 sudo install -m 0755 -d /etc/apt/keyrings
 
-                curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --batch --yes --dearmor -o /etc/apt/keyrings/docker.gpg
+                # Retry curl (important en CI)
+                for i in 1 2 3; do
+                    curl -fsSL https://download.docker.com/linux/ubuntu/gpg && break
+                    echo "Retry $i..."
+                    sleep 3
+                done | sudo gpg --batch --yes --dearmor -o /etc/apt/keyrings/docker.gpg
 
                 sudo chmod a+r /etc/apt/keyrings/docker.gpg
 
