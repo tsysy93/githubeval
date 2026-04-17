@@ -3,6 +3,12 @@ pipeline {
 
     stages {
 
+         stage('Checkout-SCM') {
+            steps {
+                gti branch: 'main', url: 'https://github.com/tsysy93/githubeval/'
+            }
+        }
+
         stage('Clean Docker') {
             steps {
                 sh '''
