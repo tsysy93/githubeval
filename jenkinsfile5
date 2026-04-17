@@ -34,7 +34,7 @@ pipeline {
 
         stage('Run') {
             steps {
-                sh 'docker run -d --name myapp -p 8080:80 mon-nginx'
+                sh 'docker run -d --name myapp -p 8081:80 mon-nginx'
             }
         }
 
