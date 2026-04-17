@@ -3,14 +3,20 @@ pipeline {
 
     stages {
 
+        stage('Clean Docker') {
+            steps {
+                sh '''
+                docker stop $(docker ps -aq) || true
+                docker rm $(docker ps -aq) || true
+                docker rmi $(docker images -q) || true
+                '''
+            }
+        }
+
         stage('Install Docker') {
             steps {
-                sh 'sudo apt install apt-transport-https ca-certificates curl software-properties-common -y'
                 sh 'sudo apt install docker.io -y'
-                sh 'sudo chmod 666 /var/run/docker.sock'
-                sh 'sudo usermod -aG docker $USER'
-                sh 'sudo systemctl start docker.service'
-                sh 'sudo systemctl status docker.service'
+                sh 'sudo systemctl start docker'
             }
         }
 
@@ -20,11 +26,22 @@ pipeline {
             }
         }
 
-        stage('Build-image-nginx') {
+        stage('Build') {
             steps {
                 sh 'docker build -t mon-nginx .'
             }
         }
 
+        stage('Run') {
+            steps {
+                sh 'docker run -d --name myapp -p 8080:80 mon-nginx'
+            }
+        }
+
+        stage('Copy site') {
+            steps {
+                sh 'docker cp monsite myapp:/usr/share/nginx/html'
+            }
+        }
     }
 }
