@@ -1,63 +1,15 @@
 pipeline {
     agent any
-
-    environment {
-        IMAGE_NAME = "my-nginx"
-        IMAGE_TAG = "latest"
-    }
-
     stages {
-
-        stage('Checkout') {
+        stage('Clone') {
             steps {
-                checkout scm
+                git branch: 'main', url: 'https://github.com/tsysy93/githubeval/.git'
             }
         }
-
-        stage('Verify workspace') {
+        stage('Build-image-nginx') {
             steps {
-                sh 'ls -la'
+                sh 'docker build -t mon-nginx .'
             }
-        }
-
-        stage('Build Docker Image') {
-            steps {
-                sh """
-                docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
-                """
-            }
-        }
-
-        stage('Test Docker Image') {
-            steps {
-                sh """
-                docker run --rm ${IMAGE_NAME}:${IMAGE_TAG} nginx -v
-                """
-            }
-        }
-
-        stage('Run container test') {
-            steps {
-                sh """
-                docker run -d --name test-nginx -p 8080:80 ${IMAGE_NAME}:${IMAGE_TAG}
-                sleep 5
-                curl -I http://localhost:8080 || true
-                docker stop test-nginx
-                docker rm test-nginx
-                """
-            }
-        }
-    }
-
-    post {
-        success {
-            echo 'Pipeline terminé avec succès'
-        }
-        failure {
-            echo 'Pipeline échoué'
-        }
-        always {
-            sh 'docker system prune -f || true'
         }
     }
 }
