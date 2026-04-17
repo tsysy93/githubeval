@@ -1,0 +1,57 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = "my-nginx"
+        IMAGE_TAG = "latest"
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                echo 'Récupération du code...'
+                checkout scm
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    echo 'Construction de l’image Docker...'
+                    sh """
+                    docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                    """
+                }
+            }
+        }
+
+        stage('Test Image') {
+            steps {
+                script {
+                    echo 'Test de l’image Docker...'
+                    sh """
+                    docker run --rm ${IMAGE_NAME}:${IMAGE_TAG} nginx -v
+                    """
+                }
+            }
+        }
+
+        stage('Deploy (optionnel)') {
+            steps {
+                echo 'Déploiement (à adapter selon besoin)...'
+                // Exemple :
+                // sh "docker run -d -p 80:80 ${IMAGE_NAME}:${IMAGE_TAG}"
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline exécuté avec succès !'
+        }
+        failure {
+            echo 'Erreur dans le pipeline.'
+        }
+    }
+}
